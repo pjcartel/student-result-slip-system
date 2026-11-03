@@ -41,3 +41,12 @@ CREATE TABLE IF NOT EXISTS results (
 );
 
 CREATE INDEX IF NOT EXISTS idx_results_student_sem ON results(student_id, semester_id);
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),   -- UTC
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    username   TEXT,                                      -- kept even if the user is deleted
+    action     TEXT NOT NULL,
+    details    TEXT NOT NULL
+);

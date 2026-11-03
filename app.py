@@ -1,4 +1,6 @@
 """School Management System - Student Result Slips (Flask + SQLite)."""
+import csv
+import io
 import os
 import secrets
 import sqlite3
@@ -80,12 +82,47 @@ def build_slip(student_id, semester_id):
     return lines, credits, gpa
 
 
+def transcript_data(student_id, published_only):
+    """Per-semester GPA plus cumulative GPA (CGPA), weighted by credit hours."""
+    db = get_db()
+    sql = """SELECT sem.id, sem.label, u.credit_hours, r.cat, r.exam
+             FROM results r JOIN units u ON u.id=r.unit_id
+             JOIN semesters sem ON sem.id=r.semester_id
+             WHERE r.student_id=?"""
+    if published_only:
+        sql += " AND sem.published=1"
+    rows = db.execute(sql + " ORDER BY sem.id", (student_id,)).fetchall()
+    sems, order = {}, []
+    for r in rows:
+        if r["id"] not in sems:
+            sems[r["id"]] = dict(id=r["id"], label=r["label"], units=0, credits=0, points=0.0)
+            order.append(r["id"])
+        d = sems[r["id"]]
+        d["units"] += 1
+        d["credits"] += r["credit_hours"]
+        d["points"] += grade_for(r["cat"] + r["exam"])[1] * r["credit_hours"]
+    out = [sems[i] for i in order]
+    for d in out:
+        d["gpa"] = round(d["points"] / d["credits"], 2)
+    tc = sum(d["credits"] for d in out)
+    cgpa = round(sum(d["points"] for d in out) / tc, 2) if tc else 0.0
+    return out, tc, cgpa
+
+
 # -------------------------------------------------------------------- auth
 def current_user():
     uid = session.get("uid")
     if not uid:
         return None
     return get_db().execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+
+
+def audit(action, details):
+    """Record who did what. Caller commits (so it is atomic with the change)."""
+    u = current_user()
+    get_db().execute(
+        "INSERT INTO audit_log(user_id, username, action, details) VALUES(?,?,?,?)",
+        (u["id"] if u else None, u["username"] if u else "-", action, details))
 
 
 def login_required(*roles):
@@ -177,6 +214,7 @@ def students():
             # student login: username = reg no, initial password = reg no
             db.execute("INSERT INTO users(username,password_hash,role,student_id) VALUES(?,?,?,?)",
                        (reg.lower(), generate_password_hash(reg), "student", cur.lastrowid))
+            audit("student.add", f"{reg} {request.form['name'].strip()}")
             db.commit()
             flash(f"Student {reg} added. Initial password is the registration number.", "ok")
         except (sqlite3.IntegrityError, ValueError):
@@ -191,9 +229,27 @@ def students():
 @login_required("admin")
 def delete_student(sid):
     db = get_db()
+    st = db.execute("SELECT reg_no FROM students WHERE id=?", (sid,)).fetchone()
     db.execute("DELETE FROM students WHERE id=?", (sid,))
+    if st:
+        audit("student.delete", f"{st['reg_no']} and all their results")
     db.commit()
     flash("Student deleted.", "ok")
+    return redirect(url_for("students"))
+
+
+@app.route("/students/<int:sid>/reset-password", methods=["POST"])
+@login_required("admin")
+def reset_student_password(sid):
+    db = get_db()
+    st = db.execute("SELECT reg_no FROM students WHERE id=?", (sid,)).fetchone()
+    if not st:
+        abort(404)
+    db.execute("UPDATE users SET password_hash=? WHERE student_id=?",
+               (generate_password_hash(st["reg_no"]), sid))
+    audit("student.password_reset", st["reg_no"])
+    db.commit()
+    flash(f"Password for {st['reg_no']} reset to their registration number.", "ok")
     return redirect(url_for("students"))
 
 
@@ -237,6 +293,9 @@ def semesters():
 def toggle_semester(sid):
     db = get_db()
     db.execute("UPDATE semesters SET published = 1 - published WHERE id=?", (sid,))
+    sem = db.execute("SELECT label, published FROM semesters WHERE id=?", (sid,)).fetchone()
+    if sem:
+        audit("semester.publish" if sem["published"] else "semester.unpublish", sem["label"])
     db.commit()
     return redirect(url_for("semesters"))
 
@@ -252,12 +311,24 @@ def results():
             cat, exam = float(request.form["cat"]), float(request.form["exam"])
             if not (0 <= cat <= 30 and 0 <= exam <= 70):
                 raise ValueError
+            old = db.execute(
+                "SELECT cat, exam FROM results WHERE student_id=? AND unit_id=? AND semester_id=?",
+                (sid, uid, sem)).fetchone()
             db.execute(
                 """INSERT INTO results(student_id,unit_id,semester_id,cat,exam,entered_by)
                    VALUES(?,?,?,?,?,?)
                    ON CONFLICT(student_id,unit_id,semester_id)
                    DO UPDATE SET cat=excluded.cat, exam=excluded.exam, entered_by=excluded.entered_by""",
                 (sid, uid, sem, cat, exam, g.user["id"]))
+            who = db.execute(
+                """SELECT s.reg_no, u.code, m.label FROM students s, units u, semesters m
+                   WHERE s.id=? AND u.id=? AND m.id=?""", (sid, uid, sem)).fetchone()
+            if old:
+                audit("result.update", f"{who['reg_no']} {who['code']} {who['label']}: "
+                      f"CAT {old['cat']:g}->{cat:g}, Exam {old['exam']:g}->{exam:g}")
+            else:
+                audit("result.add", f"{who['reg_no']} {who['code']} {who['label']}: "
+                      f"CAT {cat:g}, Exam {exam:g}")
             db.commit()
             flash("Result saved.", "ok")
         except (ValueError, KeyError, sqlite3.IntegrityError):
@@ -284,10 +355,122 @@ def results():
 @login_required("admin", "lecturer")
 def delete_result(rid):
     db = get_db()
-    row = db.execute("SELECT semester_id FROM results WHERE id=?", (rid,)).fetchone()
+    row = db.execute(
+        """SELECT r.semester_id, s.reg_no, u.code, m.label, r.cat, r.exam
+           FROM results r JOIN students s ON s.id=r.student_id JOIN units u ON u.id=r.unit_id
+           JOIN semesters m ON m.id=r.semester_id WHERE r.id=?""", (rid,)).fetchone()
     db.execute("DELETE FROM results WHERE id=?", (rid,))
+    if row:
+        audit("result.delete", f"{row['reg_no']} {row['code']} {row['label']}: "
+              f"CAT {row['cat']:g}, Exam {row['exam']:g}")
     db.commit()
     return redirect(url_for("results", semester=row["semester_id"] if row else None))
+
+
+# ------------------------------------------------------------- CSV import
+IMPORT_MAX_BYTES = 1_000_000
+IMPORT_MAX_ROWS = 2000
+
+
+@app.route("/results/import", methods=["GET", "POST"])
+@login_required("admin", "lecturer")
+def import_results():
+    db = get_db()
+    sems = db.execute("SELECT * FROM semesters ORDER BY id DESC").fetchall()
+    errors, imported = [], None
+    if request.method == "POST":
+        f = request.files.get("file")
+        try:
+            sem_id = int(request.form["semester_id"])
+        except (KeyError, ValueError):
+            sem_id = None
+        sem = db.execute("SELECT * FROM semesters WHERE id=?", (sem_id,)).fetchone() if sem_id else None
+        if not sem:
+            errors.append("Choose a semester.")
+        if not f or not f.filename:
+            errors.append("Choose a CSV file.")
+        if not errors:
+            raw = f.read(IMPORT_MAX_BYTES + 1)
+            if len(raw) > IMPORT_MAX_BYTES:
+                errors.append("File is too large (limit 1 MB).")
+            else:
+                try:
+                    reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+                    cols = [c.strip().lower() for c in (reader.fieldnames or [])]
+                    if cols[:4] != ["reg_no", "unit_code", "cat", "exam"] and \
+                            not {"reg_no", "unit_code", "cat", "exam"} <= set(cols):
+                        errors.append("Header must contain: reg_no, unit_code, cat, exam")
+                    else:
+                        reader.fieldnames = cols
+                        good, seen = [], set()
+                        for n, row in enumerate(reader, start=2):
+                            if n - 1 > IMPORT_MAX_ROWS:
+                                errors.append(f"Too many rows (limit {IMPORT_MAX_ROWS}).")
+                                break
+                            reg = (row.get("reg_no") or "").strip().upper()
+                            code = (row.get("unit_code") or "").strip().upper()
+                            st = db.execute("SELECT id FROM students WHERE reg_no=?", (reg,)).fetchone()
+                            un = db.execute("SELECT id FROM units WHERE code=?", (code,)).fetchone()
+                            try:
+                                cat, exam = float(row.get("cat")), float(row.get("exam"))
+                                if not (0 <= cat <= 30 and 0 <= exam <= 70):
+                                    raise ValueError
+                            except (TypeError, ValueError):
+                                errors.append(f"Line {n}: CAT must be 0-30 and Exam 0-70 (numbers).")
+                                continue
+                            if not st:
+                                errors.append(f"Line {n}: unknown student '{reg}'.")
+                            elif not un:
+                                errors.append(f"Line {n}: unknown unit '{code}'.")
+                            elif (reg, code) in seen:
+                                errors.append(f"Line {n}: duplicate {reg} / {code} in file.")
+                            else:
+                                seen.add((reg, code))
+                                good.append((st["id"], un["id"], cat, exam))
+                        if not errors and not good:
+                            errors.append("The file has no data rows.")
+                        if not errors:  # all-or-nothing
+                            for sid, uid, cat, exam in good:
+                                db.execute(
+                                    """INSERT INTO results(student_id,unit_id,semester_id,cat,exam,entered_by)
+                                       VALUES(?,?,?,?,?,?)
+                                       ON CONFLICT(student_id,unit_id,semester_id)
+                                       DO UPDATE SET cat=excluded.cat, exam=excluded.exam,
+                                                     entered_by=excluded.entered_by""",
+                                    (sid, uid, sem_id, cat, exam, g.user["id"]))
+                            audit("result.import", f"{len(good)} marks into {sem['label']} from {f.filename}")
+                            db.commit()
+                            imported = len(good)
+                except (UnicodeDecodeError, csv.Error):
+                    errors.append("Could not read the file. Save it as a UTF-8 CSV.")
+    return render_template("import.html", sems=sems, errors=errors[:30],
+                           more=max(0, len(errors) - 30), imported=imported)
+
+
+# ------------------------------------------------------------- audit log
+@app.route("/audit")
+@login_required("admin")
+def audit_log():
+    rows = get_db().execute(
+        "SELECT * FROM audit_log ORDER BY id DESC LIMIT 200").fetchall()
+    return render_template("audit.html", rows=rows)
+
+
+# ------------------------------------------------------------- transcript
+@app.route("/transcript/<int:student_id>")
+@login_required()
+def transcript(student_id):
+    user = g.user
+    if user["role"] == "student" and user["student_id"] != student_id:
+        abort(403)
+    stu = get_db().execute("SELECT * FROM students WHERE id=?", (student_id,)).fetchone()
+    if not stu:
+        abort(404)
+    sems, credits, cgpa = transcript_data(student_id, published_only=user["role"] == "student")
+    if not sems:
+        abort(404)
+    return render_template("transcript.html", stu=stu, sems=sems, credits=credits,
+                           cgpa=cgpa, standing=classify(cgpa))
 
 
 # ------------------------------------------------------------- result slips

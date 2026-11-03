@@ -15,11 +15,13 @@
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
       <a href="{{ url_for('results') }}">Enter results</a>
       <a href="{{ url_for('lookup') }}">View slip</a>
+      <a href="{{ url_for('import_results') }}">Import CSV</a>
     {% endif %}
     {% if me.role == 'admin' %}
       <a href="{{ url_for('students') }}">Students</a>
       <a href="{{ url_for('units') }}">Units</a>
       <a href="{{ url_for('semesters') }}">Semesters</a>
+      <a href="{{ url_for('audit_log') }}">Audit log</a>
     {% endif %}
     {% if me.role == 'student' %}<a href="{{ url_for('my_slips') }}">My slips</a>{% endif %}
     <a href="{{ url_for('change_password') }}">Password</a>

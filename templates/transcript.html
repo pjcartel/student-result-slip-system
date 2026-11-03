@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Transcript - {{ stu.reg_no }}{% endblock %}
+{% block body %}
+<div class="no-print actions"><button onclick="window.print()">Print / Save as PDF</button></div>
+<article class="slip">
+  <header>
+    <h1>{{ school_name|upper }}</h1>
+    <h2>ACADEMIC TRANSCRIPT SUMMARY</h2>
+  </header>
+  <dl class="meta">
+    <div><dt>Name</dt><dd>{{ stu.name }}</dd></div>
+    <div><dt>Registration No.</dt><dd>{{ stu.reg_no }}</dd></div>
+    <div><dt>Programme</dt><dd>{{ stu.programme }}</dd></div>
+    <div><dt>Year of study</dt><dd>{{ stu.year_of_study }}</dd></div>
+  </dl>
+  <table>
+    <tr><th>Semester</th><th>Units</th><th>Credit hours</th><th>Semester GPA</th><th></th></tr>
+    {% for s in sems %}
+    <tr><td>{{ s.label }}</td><td>{{ s.units }}</td><td>{{ s.credits }}</td><td>{{ '%.2f'|format(s.gpa) }}</td>
+      <td class="no-print"><a href="{{ url_for('slip', student_id=stu.id, semester_id=s.id) }}">View slip</a></td></tr>
+    {% endfor %}
+    <tr class="sum"><td colspan="2">Total</td><td>{{ credits }}</td><td colspan="2"></td></tr>
+  </table>
+  <div class="summary">
+    <div>Cumulative GPA (CGPA): <b>{{ '%.2f'|format(cgpa) }}</b> / 4.00</div>
+    <div>Standing: <b>{{ standing }}</b></div>
+  </div>
+  <p class="key">CGPA = total grade points (grade points x credit hours) divided by total credit hours across all listed semesters.</p>
+  <p class="key">This document is computer-generated and valid only when issued from the school system.</p>
+</article>
+{% endblock %}

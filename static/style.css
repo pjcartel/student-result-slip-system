@@ -37,3 +37,6 @@ tr.fail td{color:var(--red)}tr.sum td{font-weight:700;background:#f1f4f8}
 .draft{position:absolute;top:10px;right:14px;color:var(--red);border:2px solid var(--red);padding:2px 8px;font-weight:700;transform:rotate(4deg)}
 @media print{body{background:#fff}.no-print{display:none!important}main{margin:0;max-width:none}.slip{border:1px solid #000}}
 @media(max-width:640px){.meta{grid-template-columns:1fr}table{font-size:13px}}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px}
+.flash ul{margin:6px 0 0 18px;padding:0}
+input[type=file]{padding:6px}

@@ -13,7 +13,9 @@
   <tr><th>Reg no</th><th>Name</th><th>Programme</th><th>Year</th><th></th></tr>
   {% for s in rows %}
   <tr><td>{{ s.reg_no }}</td><td>{{ s.name }}</td><td>{{ s.programme }}</td><td>{{ s.year_of_study }}</td>
-    <td><form method="post" action="{{ url_for('delete_student', sid=s.id) }}" onsubmit="return confirm('Delete {{ s.reg_no }} and all their results?')">
+    <td><form method="post" action="{{ url_for('reset_student_password', sid=s.id) }}" class="inline" onsubmit="return confirm('Reset password for {{ s.reg_no }} to their registration number?')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button>Reset password</button></form>
+      <form method="post" class="inline" action="{{ url_for('delete_student', sid=s.id) }}" onsubmit="return confirm('Delete {{ s.reg_no }} and all their results?')">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="danger">Delete</button></form></td></tr>
   {% endfor %}
 </table>

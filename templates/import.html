@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Import marks from CSV</h1>
+<form method="post" enctype="multipart/form-data" class="row card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <select name="semester_id" required>
+    {% for s in sems %}<option value="{{ s.id }}">{{ s.label }}</option>{% endfor %}
+  </select>
+  <input type="file" name="file" accept=".csv,text/csv" required>
+  <button>Import</button>
+</form>
+<p class="muted">Header row: <code>reg_no,unit_code,cat,exam</code>. CAT is 0-30 and Exam 0-70. Existing marks for the same student, unit and semester are updated. The import is all-or-nothing: if any line has a problem, nothing is saved. A sample file is in <code>docs/sample_marks.csv</code>.</p>
+{% if imported %}<div class="flash ok">Imported {{ imported }} marks.</div>{% endif %}
+{% if errors %}
+<div class="flash error"><b>Nothing was imported. Fix these lines and try again:</b>
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% if more %}<p>...and {{ more }} more.</p>{% endif %}</div>
+{% endif %}
+{% endblock %}
