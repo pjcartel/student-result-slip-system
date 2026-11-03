@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="card narrow">
+  <h1>Sign in</h1>
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Username <input name="username" required autofocus></label>
+    <label>Password <input name="password" type="password" required></label>
+    <button>Sign in</button>
+  </form>
+  <p class="muted">Students: username is your registration number in lowercase (e.g. 2022/001).</p>
+</section>
+{% endblock %}

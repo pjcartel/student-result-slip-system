@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Semesters</h1>
+<form method="post" class="row card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input name="label" placeholder="e.g. 2027 Jan-Apr" required>
+  <button>Add semester</button>
+</form>
+<table>
+  <tr><th>Semester</th><th>Status</th><th></th></tr>
+  {% for s in rows %}
+  <tr><td>{{ s.label }}</td><td>{{ 'Published' if s.published else 'Draft (hidden from students)' }}</td>
+    <td><form method="post" action="{{ url_for('toggle_semester', sid=s.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button>{{ 'Unpublish' if s.published else 'Publish' }}</button></form></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

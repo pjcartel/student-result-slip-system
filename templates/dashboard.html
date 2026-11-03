@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Dashboard</h1>
+<div class="stats">
+  <div class="stat"><b>{{ stats.students }}</b>Students</div>
+  <div class="stat"><b>{{ stats.units }}</b>Units</div>
+  <div class="stat"><b>{{ stats.semesters }}</b>Semesters</div>
+  <div class="stat"><b>{{ stats.results }}</b>Results captured</div>
+</div>
+<p class="muted">Results stay hidden from students until an administrator publishes the semester.</p>
+{% endblock %}

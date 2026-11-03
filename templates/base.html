@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ school_name }} - Result Slips{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="top no-print">
+  <a class="brand" href="{{ url_for('index') }}">{{ school_name }} <span>Result Slips</span></a>
+  {% if me %}
+  <nav>
+    {% if me.role in ('admin','lecturer') %}
+      <a href="{{ url_for('dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('results') }}">Enter results</a>
+      <a href="{{ url_for('lookup') }}">View slip</a>
+    {% endif %}
+    {% if me.role == 'admin' %}
+      <a href="{{ url_for('students') }}">Students</a>
+      <a href="{{ url_for('units') }}">Units</a>
+      <a href="{{ url_for('semesters') }}">Semesters</a>
+    {% endif %}
+    {% if me.role == 'student' %}<a href="{{ url_for('my_slips') }}">My slips</a>{% endif %}
+    <a href="{{ url_for('change_password') }}">Password</a>
+    <form method="post" action="{{ url_for('logout') }}" class="inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="link">Sign out ({{ me.username }})</button>
+    </form>
+  </nav>
+  {% endif %}
+</header>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<div class="flash {{ cat }} no-print">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</main>
+</body>
+</html>

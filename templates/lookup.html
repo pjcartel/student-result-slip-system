@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>View result slip</h1>
+<form class="row card" onsubmit="location.href='/slip/'+this.s.value+'/'+this.m.value; return false;">
+  <select name="s">{% for s in students %}<option value="{{ s.id }}">{{ s.reg_no }} - {{ s.name }}</option>{% endfor %}</select>
+  <select name="m">{% for s in sems %}<option value="{{ s.id }}">{{ s.label }}</option>{% endfor %}</select>
+  <button>Open slip</button>
+</form>
+{% endblock %}

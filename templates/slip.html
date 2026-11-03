@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Result slip - {{ stu.reg_no }}{% endblock %}
+{% block body %}
+<div class="no-print actions"><button onclick="window.print()">Print / Save as PDF</button></div>
+<article class="slip">
+  {% if draft %}<div class="draft">DRAFT - NOT PUBLISHED</div>{% endif %}
+  <header>
+    <h1>{{ school_name|upper }}</h1>
+    <h2>STUDENT RESULT SLIP</h2>
+  </header>
+  <dl class="meta">
+    <div><dt>Name</dt><dd>{{ stu.name }}</dd></div>
+    <div><dt>Registration No.</dt><dd>{{ stu.reg_no }}</dd></div>
+    <div><dt>Programme</dt><dd>{{ stu.programme }}</dd></div>
+    <div><dt>Year of study</dt><dd>{{ stu.year_of_study }}</dd></div>
+    <div><dt>Semester</dt><dd>{{ sem.label }}</dd></div>
+  </dl>
+  <table>
+    <tr><th>Code</th><th>Unit title</th><th>CH</th><th>CAT /30</th><th>Exam /70</th><th>Total</th><th>Grade</th><th>Remark</th></tr>
+    {% for l in lines %}
+    <tr class="{{ 'fail' if l.grade == 'E' }}">
+      <td>{{ l.code }}</td><td>{{ l.title }}</td><td>{{ l.ch }}</td><td>{{ l.cat }}</td>
+      <td>{{ l.exam }}</td><td>{{ l.total }}</td><td><b>{{ l.grade }}</b></td><td>{{ l.remark }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="sum"><td colspan="2">Total credit hours</td><td>{{ credits }}</td><td colspan="5"></td></tr>
+  </table>
+  <div class="summary">
+    <div>Semester GPA: <b>{{ '%.2f'|format(gpa) }}</b> / 4.00</div>
+    <div>Standing: <b>{{ standing }}</b></div>
+  </div>
+  <p class="key">Grading: A 70-100 (4.0) &middot; B 60-69 (3.0) &middot; C 50-59 (2.0) &middot; D 40-49 (1.0) &middot; E below 40 (0.0)</p>
+  <p class="key">This slip is computer-generated and valid only when issued from the school system.</p>
+</article>
+{% endblock %}

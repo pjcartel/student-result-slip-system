@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Enter results</h1>
+<form method="post" class="row card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <select name="semester_id" required>
+    {% for s in sems %}<option value="{{ s.id }}" {{ 'selected' if s.id == sem_id }}>{{ s.label }}</option>{% endfor %}
+  </select>
+  <select name="student_id" required>
+    {% for s in students %}<option value="{{ s.id }}">{{ s.reg_no }} - {{ s.name }}</option>{% endfor %}
+  </select>
+  <select name="unit_id" required>
+    {% for u in units %}<option value="{{ u.id }}">{{ u.code }} - {{ u.title }}</option>{% endfor %}
+  </select>
+  <input name="cat" type="number" step="0.5" min="0" max="30" placeholder="CAT /30" required>
+  <input name="exam" type="number" step="0.5" min="0" max="70" placeholder="Exam /70" required>
+  <button>Save</button>
+</form>
+<p class="muted">Saving again for the same student, unit and semester updates the existing mark.</p>
+
+<form method="get" class="row">
+  <select name="semester">{% for s in sems %}<option value="{{ s.id }}" {{ 'selected' if s.id == sem_id }}>{{ s.label }}</option>{% endfor %}</select>
+  <button>Show captured marks</button>
+</form>
+{% if recent %}
+<table>
+  <tr><th>Reg no</th><th>Name</th><th>Unit</th><th>CAT</th><th>Exam</th><th>Total</th><th>Grade</th><th></th></tr>
+  {% for r in recent %}{% set t = r.cat + r.exam %}
+  <tr><td>{{ r.reg_no }}</td><td>{{ r.name }}</td><td>{{ r.code }}</td><td>{{ r.cat }}</td><td>{{ r.exam }}</td>
+    <td>{{ t }}</td><td>{{ grade_for(t)[0] }}</td>
+    <td><form method="post" action="{{ url_for('delete_result', rid=r.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="danger">Remove</button></form></td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

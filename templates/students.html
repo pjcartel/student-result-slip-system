@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Students</h1>
+<form method="post" class="row card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input name="reg_no" placeholder="Reg no e.g. 2022/001" required>
+  <input name="name" placeholder="Full name" required>
+  <input name="programme" placeholder="Programme" value="Computer Studies" required>
+  <input name="year" type="number" min="1" max="6" value="1" required>
+  <button>Add student</button>
+</form>
+<table>
+  <tr><th>Reg no</th><th>Name</th><th>Programme</th><th>Year</th><th></th></tr>
+  {% for s in rows %}
+  <tr><td>{{ s.reg_no }}</td><td>{{ s.name }}</td><td>{{ s.programme }}</td><td>{{ s.year_of_study }}</td>
+    <td><form method="post" action="{{ url_for('delete_student', sid=s.id) }}" onsubmit="return confirm('Delete {{ s.reg_no }} and all their results?')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="danger">Delete</button></form></td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

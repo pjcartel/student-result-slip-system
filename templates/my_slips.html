@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>My result slips</h1>
+{% if sems %}
+<ul class="list">
+  {% for s in sems %}<li><a href="{{ url_for('slip', student_id=sid, semester_id=s.id) }}">{{ s.label }}</a></li>{% endfor %}
+</ul>
+{% else %}<p>No published results yet.</p>{% endif %}
+{% endblock %}
