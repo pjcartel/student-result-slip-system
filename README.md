@@ -67,8 +67,5 @@ Requirements, architecture, database design, business rules, security and testin
 ## Limitations and ideas
 Flask's development server and SQLite suit a demo, not production. Possible next steps: email-based password reset, per-class and per-unit lecturer permissions, PDF export with QR verification, and a REST API.
 
-## Built with AI assistance
-The initial code and design document were produced with Claude (Anthropic) and then run, tested, extended and demonstrated by the author.
-
 ## License
 [MIT](LICENSE)
