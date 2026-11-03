@@ -1,5 +1,7 @@
 # Student Result Slip System
 
+![Tests](https://github.com/pjcartel/student-result-slip-system/actions/workflows/tests.yml/badge.svg)
+
 A role-based school management web app focused on results. Lecturers capture marks (or import them from CSV), the system computes grades, GPA and cumulative GPA automatically, and students view and print only their own slips once an admin publishes the results.
 
 > Demo project. The login accounts below are demo data only.
